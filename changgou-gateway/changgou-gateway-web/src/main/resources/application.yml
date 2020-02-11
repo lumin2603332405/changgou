@@ -1,0 +1,65 @@
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]': # 匹配所有请求
+              allowedOrigins: "*" #跨域处理 允许所有的域
+              allowedMethods: # 支持的方法
+                - GET
+                - POST
+                - PUT
+                - DELETE
+      routes:
+      # 设置路由规则的唯一标识
+      - id: host_route
+      # 达到某种条件之后要转发的路径
+        uri: lb://goods
+        predicates:
+        # host路由规则   标识如果 发送的请求的所属域名是cloud.itheima.com开头都转发给http://localhost:18081
+#        - Host=cloud.itheima.com**
+        - Path=/api/goods/**
+        filters:
+        #  例如： 浏览器访问的是： localhost:8001/1115  --->路由之后变成： localhost:18081/brand/1115
+#        - PrefixPath=/brand
+#    浏览器访问的是： localhost:8001/api/brand/1115  --->路由之后变成： localhost:18081/brand/1115
+        - StripPrefix=1
+        - name: RequestRateLimiter #请求数限流 名字不能随便写 ，使用默认的facatory
+          args:
+            key-resolver: "#{@ipKeyResolver}"
+            redis-rate-limiter.replenishRate: 1
+            redis-rate-limiter.burstCapacity: 1
+      - id: changgou_user_route
+        uri: lb://user
+        predicates:
+        - Path=/api/user/**,/api/address/**,/api/areas/**,/api/cities/**,/api/provinces/**
+        filters:
+        - StripPrefix=1
+            #订单微服务
+      - id: changgou_order_route
+        uri: lb://order
+        predicates:
+        - Path=/api/cart/**,/api/categoryReport/**,/api/orderConfig/**,/api/order/**,/api/orderItem/**,/api/orderLog/**,/api/preferential/**,/api/returnCause/**,/api/returnOrder/**,/api/returnOrderItem/**
+        filters:
+        - StripPrefix=1
+
+  application:
+    name: gateway-web
+  redis:
+    host: 192.168.211.132
+    port: 6379
+server:
+  port: 8001
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:7001/eureka
+  instance:
+    prefer-ip-address: true
+management:
+  endpoint:
+    gateway:
+      enabled: true
+    web:
+      exposure:
+        include: true
